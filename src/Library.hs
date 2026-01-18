@@ -12,7 +12,19 @@ module Library
 
 import Types
 
--- BOOKS
+findBook :: BookId -> [Book] -> Maybe Book
+findBook bid = foldr (\b acc -> if bookId b == bid then Just b else acc) Nothing
+
+findUser :: UserId -> [User] -> Maybe User
+findUser uid = foldr (\u acc -> if userId u == uid then Just u else acc) Nothing
+
+updateBook :: Book -> [Book] -> [Book]
+updateBook updated =
+  map (\b -> if bookId b == bookId updated then updated else b)
+
+userHasBorrowedBooks :: UserId -> [Book] -> Bool
+userHasBorrowedBooks uid =
+  any (\b -> status b == Borrowed uid)
 
 addBook :: String -> String -> LibraryState -> (LibraryState, BookId)
 addBook t a state =
@@ -36,8 +48,6 @@ borrowedBooks :: LibraryState -> [Book]
 borrowedBooks state =
   filter (\b -> status b /= Available) (books state)
 
--- USERS
-
 addUser :: String -> LibraryState -> (LibraryState, UserId)
 addUser name state =
   let newUser = User
@@ -53,16 +63,49 @@ addUser name state =
 listUsers :: LibraryState -> [User]
 listUsers state = users state
 
--- PLACEHOLDERS (not implemented yet)
-
 removeBook :: BookId -> LibraryState -> Either Error LibraryState
-removeBook _ _ = error "removeBook not implemented yet"
+removeBook bid state =
+  case findBook bid (books state) of
+    Nothing -> Left BookNotFound
+    Just book ->
+      case status book of
+        Available ->
+          Right state { books = filter (\b -> bookId b /= bid) (books state) }
+        Borrowed _ -> Left CannotRemoveBorrowedBook
 
 removeUser :: UserId -> LibraryState -> Either Error LibraryState
-removeUser _ _ = error "removeUser not implemented yet"
+removeUser uid state =
+  case findUser uid (users state) of
+    Nothing -> Left UserNotFound
+    Just _ ->
+      if userHasBorrowedBooks uid (books state)
+        then Left CannotRemoveUserWithBorrowedBooks
+        else Right state { users = filter (\u -> userId u /= uid) (users state) }
 
 borrowBook :: UserId -> BookId -> LibraryState -> Either Error LibraryState
-borrowBook _ _ _ = error "borrowBook not implemented yet"
+borrowBook uid bid state =
+  case findUser uid (users state) of
+    Nothing -> Left UserNotFound
+    Just _ ->
+      case findBook bid (books state) of
+        Nothing -> Left BookNotFound
+        Just book ->
+          case status book of
+            Available ->
+              let updated = book { status = Borrowed uid }
+              in Right state { books = updateBook updated (books state) }
+            Borrowed _ -> Left BookAlreadyBorrowed
 
 returnBook :: UserId -> BookId -> LibraryState -> Either Error LibraryState
-returnBook _ _ _ = error "returnBook not implemented yet"
+returnBook uid bid state =
+  case findBook bid (books state) of
+    Nothing -> Left BookNotFound
+    Just book ->
+      case status book of
+        Available -> Left BookNotBorrowed
+        Borrowed borrowerId ->
+          if borrowerId == uid
+            then
+              let updated = book { status = Available }
+              in Right state { books = updateBook updated (books state) }
+            else Left BorrowedByDifferentUser
