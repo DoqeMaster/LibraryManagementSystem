@@ -1,40 +1,68 @@
 module Library
   ( addBook
-  , removeBook
+  , availableBooks
+  , borrowedBooks
   , addUser
+  , listUsers
+  , removeBook
   , removeUser
   , borrowBook
   , returnBook
-  , availableBooks
-  , borrowedBooks
-  , listUsers
   ) where
 
 import Types
 
+-- BOOKS
+
 addBook :: String -> String -> LibraryState -> (LibraryState, BookId)
-addBook = undefined
-
-removeBook :: BookId -> LibraryState -> Either Error LibraryState
-removeBook = undefined
-
-addUser :: String -> LibraryState -> (LibraryState, UserId)
-addUser = undefined
-
-removeUser :: UserId -> LibraryState -> Either Error LibraryState
-removeUser = undefined
-
-borrowBook :: UserId -> BookId -> LibraryState -> Either Error LibraryState
-borrowBook = undefined
-
-returnBook :: UserId -> BookId -> LibraryState -> Either Error LibraryState
-returnBook = undefined
+addBook t a state =
+  let newBook = Book
+        { bookId = nextBookId state
+        , title  = t
+        , author = a
+        , status = Available
+        }
+      newState = state
+        { books = newBook : books state
+        , nextBookId = nextBookId state + 1
+        }
+  in (newState, bookId newBook)
 
 availableBooks :: LibraryState -> [Book]
-availableBooks = undefined
+availableBooks state =
+  filter (\b -> status b == Available) (books state)
 
 borrowedBooks :: LibraryState -> [Book]
-borrowedBooks = undefined
+borrowedBooks state =
+  filter (\b -> status b /= Available) (books state)
+
+-- USERS
+
+addUser :: String -> LibraryState -> (LibraryState, UserId)
+addUser name state =
+  let newUser = User
+        { userId = nextUserId state
+        , userName = name
+        }
+      newState = state
+        { users = newUser : users state
+        , nextUserId = nextUserId state + 1
+        }
+  in (newState, userId newUser)
 
 listUsers :: LibraryState -> [User]
-listUsers = undefined
+listUsers state = users state
+
+-- PLACEHOLDERS (not implemented yet)
+
+removeBook :: BookId -> LibraryState -> Either Error LibraryState
+removeBook _ _ = error "removeBook not implemented yet"
+
+removeUser :: UserId -> LibraryState -> Either Error LibraryState
+removeUser _ _ = error "removeUser not implemented yet"
+
+borrowBook :: UserId -> BookId -> LibraryState -> Either Error LibraryState
+borrowBook _ _ _ = error "borrowBook not implemented yet"
+
+returnBook :: UserId -> BookId -> LibraryState -> Either Error LibraryState
+returnBook _ _ _ = error "returnBook not implemented yet"
